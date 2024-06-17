@@ -1,0 +1,4 @@
+{
+    "makefile.makefilePath": "Makefile",
+    "sonarlint.pathToCompileCommands": "build/compile_commands.json",
+}
