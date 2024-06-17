@@ -1,213 +1,157 @@
-#include "stdio.h"
-#include <openssl/bn.h>
-#include <sys/types.h>
+#include "rsa.h"
+#include <ctype.h>
+#include <openssl/sha.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
-#define NUM_BITS 1024
 #define ALICE_KP_FILE "alice.kp"
 #define BOB_PK_N_FILE "bob.pk"
+#define SIG_FILE "sig.txt"
 
-BIGNUM *bignum_from_file(FILE* file) {
-    char *line = NULL;
-    ssize_t read;
-    size_t len = 0;
-
-    read = getline(&line, &len, file);
-    if (line[read - 1] == '\n') { // Check for newline and remove if present
-        line[read - 1] = '\0';
-    }
-
-    BIGNUM *bn = BN_new();
-    BN_hex2bn(&bn, line);
-
-    free(line);
-    return bn;
+void help(char const * const name) {
+    fprintf(stderr, "Usage: %s [gen|sign|verify]\n", name);
 }
 
-void bignum_to_file(const BIGNUM *bn, FILE* file) {
-    char *hex = BN_bn2hex(bn);
-    fprintf(file, "%s\n", hex);
-}
-
-typedef struct SecretKey {
-    BIGNUM *d;
-    BIGNUM *n;
-} SecretKey;
-
-typedef struct RSAPublicKey {
-    BIGNUM *e;
-    BIGNUM *n;
-} RSAPublicKey;
-
-typedef struct RSAKeyPair {
-    SecretKey *sk;
-    RSAPublicKey *pk;
-} RSAKeyPair;
-
-RSAPublicKey *loadPublicKeyFromFile(const char *filename) {
-    FILE *file = fopen(filename, "r");
-    if (file == NULL) {
-        fprintf(stderr, "Error: Could not open file %s\n", filename);
+void gen(void) {
+    if (access(ALICE_KP_FILE, F_OK) == F_OK) {
+        fprintf(stderr, "Error: Alice's key pair already exists\n");
         exit(1);
     }
 
-    RSAPublicKey *pk = malloc(sizeof(RSAPublicKey));
-    pk->e = BN_new();
-    pk->n = BN_new();
+    RSAKeyPair * alice_kp = keypair_generate();
+    keypair_save_to_file(alice_kp, ALICE_KP_FILE);
+    printf("Saved Alice's keypair to file %s\n", ALICE_KP_FILE);
 
-    char *line = NULL;
-    ssize_t read;
-    size_t len = 0;
-
-    read = getline(&line, &len, file);
-    line[read - 1] = '\0'; // remove newline
-    BN_hex2bn(&pk->e, line);
-
-    read = getline(&line, &len, file);
-    if (line[read - 1] == '\n') { // Check for newline and remove if present
-        line[read - 1] = '\0';
-    }
-    BN_hex2bn(&pk->n, line);
-
-    free(line);
-    fclose(file);
-    return pk;
+    keypair_free(alice_kp);
 }
 
-RSAKeyPair *keypair_load_from_file(const char *filename) {
-    FILE *file = fopen(filename, "r");
-    if (file == NULL) {
-        fprintf(stderr, "Error: Could not open file %s\n", filename);
+void sign(void) {
+    printf("Loading Alice's key pair from file %s\n", ALICE_KP_FILE);
+    RSAKeyPair * alice_kp = keypair_load_from_file(ALICE_KP_FILE);
+
+    printf("Loading Bob's public key from file %s\n", BOB_PK_N_FILE);
+    RSAPublicKey * bob_pk = pk_load_from_file(BOB_PK_N_FILE);
+
+    if (access(SIG_FILE, F_OK) == F_OK) {
+        fprintf(stderr, "Error: Signature information already exists\n");
         exit(1);
     }
 
-    RSAKeyPair *kp = malloc(sizeof(RSAKeyPair));
-    kp->sk = malloc(sizeof(SecretKey));
-    kp->pk = malloc(sizeof(RSAPublicKey));
+    BIGNUM * aes_key = BN_new();
+    BN_rand(aes_key, 128, 0, 0);
 
-    kp->sk->d = bignum_from_file(file);
-    kp->sk->n = bignum_from_file(file);
-    kp->pk->e = bignum_from_file(file);
-    kp->pk->n = bignum_from_file(file);
-
-    fclose(file);
-    return kp;
-}
-
-void keypair_save_to_file(const RSAKeyPair *kp, const char *filename) {
-    FILE *file = fopen(filename, "w");
-    if (file == NULL) {
-        fprintf(stderr, "Error: Could not open file %s\n", filename);
-        exit(1);
-    }
-
-    bignum_to_file(kp->sk->d, file);
-    bignum_to_file(kp->sk->n, file);
-    bignum_to_file(kp->pk->e, file);
-    bignum_to_file(kp->pk->n, file);
-
-    fclose(file);
-}
-
-RSAKeyPair *keypair_generate() {
-    BN_CTX *ctx = BN_CTX_new();
+    BN_CTX * ctx = BN_CTX_new();
     BN_CTX_start(ctx);
 
-    BIGNUM *p = BN_new();
-    BIGNUM *q = BN_new();
+    BIGNUM * x = BN_new(); // x = AES_key^eb mod nb
+    BN_mod_exp(x, aes_key, bob_pk->e, bob_pk->n, ctx);
 
-    BN_generate_prime_ex(p, NUM_BITS, 0, NULL, NULL, NULL);
-    BN_generate_prime_ex(q, NUM_BITS, 0, NULL, NULL, NULL);
+    BIGNUM * sig = BN_new(); // sig = x^da mod na
+    BN_mod_exp(sig, x, alice_kp->sk->d, alice_kp->sk->n, ctx);
 
-    BIGNUM *N = BN_new();
-    BN_mul(N, p, q, ctx);
+    FILE * file = fopen(SIG_FILE, "w");
+    if (file == NULL) {
+        fprintf(stderr, "Error opening file\n");
+        exit(1);
+    }
 
-    BIGNUM *phi = BN_new();
-    BIGNUM *p_minus_one = BN_dup(p);
-    BIGNUM *q_minus_one = BN_dup(q);
-    BN_sub(p_minus_one, p_minus_one, BN_value_one());
-    BN_sub(q_minus_one, q_minus_one, BN_value_one());
-    BN_mul(phi, p_minus_one, q_minus_one, ctx);
-    BN_free(p_minus_one);
-    BN_free(q_minus_one);
+    bignum_to_file(aes_key, file);
+    bignum_to_file(x, file);
+    bignum_to_file(sig, file);
+    bignum_to_file(alice_kp->pk->e, file);
+    bignum_to_file(alice_kp->pk->n, file);
 
-    BIGNUM *e = BN_new();
-    BIGNUM *gcd = BN_new();
-    do {
-        BN_generate_prime_ex(e, 1024, 0, NULL, NULL, NULL);
-        BN_gcd(gcd, e, phi, ctx);
-    } while (!BN_is_one(gcd));
-    BN_free(gcd);
+    fclose(file);
 
-    BIGNUM *d = BN_new();
-    BN_mod_inverse(d, e, phi, ctx);
+    BN_free(sig);
+    BN_free(x);
+    BN_CTX_end(ctx);
+    BN_CTX_free(ctx);
+    BN_free(aes_key);
+    BN_free(bob_pk->e);
+    BN_free(bob_pk->n);
+    free(bob_pk);
+    keypair_free(alice_kp);
+}
 
-    RSAKeyPair *kp = malloc(sizeof(RSAKeyPair));
-    kp->sk = malloc(sizeof(SecretKey));
-    kp->pk = malloc(sizeof(RSAPublicKey));
+void verify(void) {
+    printf("Loading Alice's key pair from file %s\n", ALICE_KP_FILE);
+    RSAKeyPair * alice_kp = keypair_load_from_file(ALICE_KP_FILE);
 
-    kp->sk->d = d;
-    kp->sk->n = N;
+    printf("Loading Bob's public key from file %s\n", BOB_PK_N_FILE);
+    RSAPublicKey * bob_pk = pk_load_from_file(BOB_PK_N_FILE);
 
-    kp->pk->e = e;
-    kp->pk->n = N;
+    FILE * file = fopen(SIG_FILE, "r");
+    if (file == NULL) {
+        fprintf(stderr, "Error opening file\n");
+        exit(1);
+    }
+
+    BN_CTX * ctx = BN_CTX_new();
+    BN_CTX_start(ctx);
+
+    BIGNUM * aes_key = bignum_from_file(file);
+    BIGNUM * x = bignum_from_file(file);
+    BIGNUM * sig = bignum_from_file(file);
+    fclose(file);
+
+    // Read message c from file
+    FILE * file = fopen("message.txt", "r");
+    if (file == NULL) {
+        fprintf(stderr, "Error opening file\n");
+        exit(1);
+    }
+
+    // First line is sig_c
+    BIGNUM * sig_c = bignum_from_file(file);
+
+    // First 16 bytes of message are the IV
+    unsigned char iv[16];
+    fread(iv, 1, 16, file);
+
+    // Read the rest of the message
+    BIGNUM * c = bignum_from_file(file);
+
+    fclose(file);
+
+    // Calculate SHA256(c)
+    unsigned char const * sha256sum = SHA256(BN_bn2hex(c), BN_num_bytes(c), NULL);
+
+    // Check if hash = sig_{c^{ep}} mod N_b
+    BIGNUM * hash = BN_new();
+    BN_hex2bn(&hash, sha256sum);
+    BN_mod(sig_c, sig_c, bob_pk->n, ctx);
+    BN_cmp(hash, sig_c) == 0 ? printf("Signature verified\n") : printf("Signature not verified\n");
 
     BN_CTX_end(ctx);
     BN_CTX_free(ctx);
-    return kp;
 }
 
-void keypair_free(RSAKeyPair *kp) {
-    BN_clear_free(kp->sk->d);
-    BN_clear_free(kp->sk->n);
-    BN_clear_free(kp->pk->e);
-    // no need to call BN_clear_free(kp->pk->n); // n is already freed by sk->n
+int main(int argc, char ** argv) {
+    // Possible argv values:
+    // gen
+    // sign
+    // verify
 
-    free(kp->sk);
-    free(kp->pk);
-    free(kp);
-}
-
-int main() {
-    printf("Loading Bob's public key from file %s\n", BOB_PK_N_FILE);
-    const RSAPublicKey *bob_pk = loadPublicKeyFromFile(BOB_PK_N_FILE);
-
-    RSAKeyPair *alice_kp;
-    if (access(ALICE_KP_FILE, F_OK) == F_OK) {
-        printf("Loading Alice's key pair from file %s\n", ALICE_KP_FILE);
-        alice_kp = keypair_load_from_file(ALICE_KP_FILE);
-    } else {
-        printf("Generating Alice's key pair\n");
-        alice_kp = keypair_generate();
-        keypair_save_to_file(alice_kp, ALICE_KP_FILE);
-        printf("Saved Alice's keypair to file %s\n", ALICE_KP_FILE);
+    if (argc < 2) {
+        help(argv[0]);
+        exit(1);
     }
 
-    if (access("sig.txt", F_OK) == F_OK) {
-        printf("Signature information already exists\n");
+    char const * const mode = argv[1];
+
+    if (strcmp(mode, "gen") == 0) {
+        gen();
+    } else if (strcmp(mode, "sign") == 0) {
+        sign();
+    } else if (strcmp(mode, "verify") == 0) {
+        verify();
     } else {
-        BIGNUM *aes_key = BN_new();
-        BN_rand(aes_key, 128, 0, 0);
-
-        BN_CTX *ctx = BN_CTX_new();
-        BN_CTX_start(ctx);
-
-        BIGNUM *x = BN_new(); // x = AES_key^eb mod nb
-        BN_mod_exp(x, aes_key, bob_pk->e, bob_pk->n, ctx);
-
-        BIGNUM *sig = BN_new(); // sig = x^da mod na
-        BN_mod_exp(sig, x, alice_kp->sk->d, alice_kp->sk->n, ctx);
-
-        FILE *file = fopen("sig.txt", "w");
-        bignum_to_file(aes_key, file);
-        bignum_to_file(x, file);
-        bignum_to_file(sig, file);
-        fclose(file);
-
-        BN_CTX_end(ctx);
-        BN_CTX_free(ctx);
+        help(argv[0]);
+        exit(1);
     }
 
-    keypair_free(alice_kp);
     return 0;
 }
