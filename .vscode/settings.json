@@ -1,4 +1,12 @@
 {
-    "makefile.makefilePath": "Makefile",
-    "sonarlint.pathToCompileCommands": "build/compile_commands.json",
+    "sonarlint.pathToCompileCommands": "${workspaceFolder}/.vscode/compile_commands.json",
+    "makefile.compileCommandsPath": ".vscode/compile_commands.json",
+    "files.associations": {
+        "bn.h": "c",
+        "types.h": "c",
+        "*.tcc": "c",
+        "string": "c",
+        "istream": "c",
+        "streambuf": "c"
+    }
 }

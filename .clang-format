@@ -1,0 +1,10 @@
+---
+BasedOnStyle: Microsoft
+
+UseTab: Never
+IndentWidth: 4
+BreakBeforeBraces: Attach
+BreakAfterReturnType: Automatic
+SpaceBeforeParens: ControlStatements
+PointerAlignment: Middle
+...
