@@ -4,6 +4,10 @@
 #include <openssl/bn.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <limits.h>
 
 #define NUM_BITS 1024
 

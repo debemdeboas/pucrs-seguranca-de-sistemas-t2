@@ -1,23 +1,16 @@
 #include "rsa.h"
-
-#include <openssl/bn.h>
-#include <sys/types.h>
-#include <unistd.h>
+#include <limits.h>
 
 BIGNUM * bignum_from_file(FILE * file) {
-    char * line = NULL;
-    ssize_t read;
-    size_t len = 0;
-
-    read = getline(&line, &len, file);
-    if (line[read - 1] == '\n') { // Check for newline and remove if present
-        line[read - 1] = '\0';
+    char line[LINE_MAX];
+    if (fgets(line, LINE_MAX, file) == NULL) {
+        fprintf(stderr, "Error: Could not read line from file\n");
+        exit(1);
     }
 
     BIGNUM * bn = BN_new();
     BN_hex2bn(&bn, line);
 
-    free(line);
     return bn;
 }
 

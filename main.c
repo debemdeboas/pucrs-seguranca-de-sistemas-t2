@@ -1,6 +1,6 @@
 #include "rsa.h"
 #include <ctype.h>
-#include <openssl/sha.h>
+#include <openssl/evp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -98,35 +98,88 @@ void verify(void) {
     fclose(file);
 
     // Read message c from file
-    FILE * file = fopen("message.txt", "r");
+    file = fopen("message.txt", "r");
     if (file == NULL) {
         fprintf(stderr, "Error opening file\n");
         exit(1);
     }
 
     // First line is sig_c
-    BIGNUM * sig_c = bignum_from_file(file);
+    // BIGNUM * sig_c = bignum_from_file(file);
+
+    char line[LINE_MAX];
+    if (fgets(line, LINE_MAX, file) == NULL) {
+        fprintf(stderr, "Error: Could not read line from file\n");
+        exit(1);
+    }
+
+    unsigned int 
+
+    unsigned char * sig_c = NULL;
 
     // First 16 bytes of message are the IV
     unsigned char iv[16];
-    fread(iv, 1, 16, file);
+    for (int i = 0; i < 16; i++) {
+        if (fscanf(file, "%02hhx", &iv[i]) != 1) {
+            fprintf(stderr, "Error reading IV\n");
+            exit(1);
+        }
+    }
 
-    // Read the rest of the message
-    BIGNUM * c = bignum_from_file(file);
+    long file_cur = ftell(file);
+    fseek(file, 0, SEEK_END);
+    long c_len = (ftell(file) - file_cur) / 2;
+    unsigned char * c = malloc(sizeof(unsigned char) * c_len);
+    fseek(file, file_cur, SEEK_SET);
+    for (int i = 0; i < c_len; i++) {
+        if (fscanf(file, "%02hhx", &c[i]) != 1) {
+            fprintf(stderr, "Error reading message\n");
+            exit(1);
+        }
+    }
 
     fclose(file);
 
-    // Calculate SHA256(c)
-    unsigned char const * sha256sum = SHA256(BN_bn2hex(c), BN_num_bytes(c), NULL);
+    OpenSSL_add_all_algorithms();
+    EVP_MD_CTX * evp_ctx = EVP_MD_CTX_create();
 
-    // Check if hash = sig_{c^{ep}} mod N_b
+    const EVP_MD * md = EVP_get_digestbyname("sha256");
+    if (!md) {
+        fprintf(stderr, "Error getting digest\n");
+        exit(1);
+    }
+
+    unsigned char md_res[EVP_MAX_MD_SIZE];
+    unsigned int md_len;
+
+    EVP_DigestInit_ex(evp_ctx, md, NULL);
+    EVP_DigestUpdate(evp_ctx, c, c_len);
+    EVP_DigestFinal_ex(evp_ctx, md_res, &md_len);
+    EVP_MD_CTX_destroy(evp_ctx);
+
+    // Print digest
+    printf("Digest: ");
+    for (unsigned int i = 0; i < md_len; i++) {
+        printf("%02x", md_res[i]);
+    }
+    printf("\n");
+
+    // Check if hash = $sig_{c}^{e_b} mod N_b$
     BIGNUM * hash = BN_new();
-    BN_hex2bn(&hash, sha256sum);
-    BN_mod(sig_c, sig_c, bob_pk->n, ctx);
+    BN_bin2bn(md_res, md_len, hash);
+
+    BN_mod_exp(sig_c, sig_c, bob_pk->e, bob_pk->n, ctx);
+    
+    printf("Hash: %s\n", BN_bn2hex(sig_c));
+
     BN_cmp(hash, sig_c) == 0 ? printf("Signature verified\n") : printf("Signature not verified\n");
+
+    EVP_cleanup();
 
     BN_CTX_end(ctx);
     BN_CTX_free(ctx);
+
+    free(c);
 }
 
 int main(int argc, char ** argv) {
