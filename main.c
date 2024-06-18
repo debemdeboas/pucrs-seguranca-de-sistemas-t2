@@ -1,5 +1,6 @@
 #include "rsa.h"
 #include <ctype.h>
+#include <limits.h>
 #include <openssl/evp.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,48 +11,51 @@
 #define BOB_PK_N_FILE "bob.pk"
 #define SIG_FILE "sig.txt"
 
-void help(char const * const name) {
+void
+help(char const *const name) {
     fprintf(stderr, "Usage: %s [gen|sign|verify]\n", name);
 }
 
-void gen(void) {
+void
+gen(void) {
     if (access(ALICE_KP_FILE, F_OK) == F_OK) {
         fprintf(stderr, "Error: Alice's key pair already exists\n");
         exit(1);
     }
 
-    RSAKeyPair * alice_kp = keypair_generate();
+    RSAKeyPair *alice_kp = keypair_generate();
     keypair_save_to_file(alice_kp, ALICE_KP_FILE);
     printf("Saved Alice's keypair to file %s\n", ALICE_KP_FILE);
 
     keypair_free(alice_kp);
 }
 
-void sign(void) {
+void
+sign(void) {
     printf("Loading Alice's key pair from file %s\n", ALICE_KP_FILE);
-    RSAKeyPair * alice_kp = keypair_load_from_file(ALICE_KP_FILE);
+    RSAKeyPair *alice_kp = keypair_load_from_file(ALICE_KP_FILE);
 
     printf("Loading Bob's public key from file %s\n", BOB_PK_N_FILE);
-    RSAPublicKey * bob_pk = pk_load_from_file(BOB_PK_N_FILE);
+    RSAPublicKey *bob_pk = pk_load_from_file(BOB_PK_N_FILE);
 
     if (access(SIG_FILE, F_OK) == F_OK) {
         fprintf(stderr, "Error: Signature information already exists\n");
         exit(1);
     }
 
-    BIGNUM * aes_key = BN_new();
+    BIGNUM *aes_key = BN_new();
     BN_rand(aes_key, 128, 0, 0);
 
-    BN_CTX * ctx = BN_CTX_new();
+    BN_CTX *ctx = BN_CTX_new();
     BN_CTX_start(ctx);
 
-    BIGNUM * x = BN_new(); // x = AES_key^eb mod nb
+    BIGNUM *x = BN_new(); // x = AES_key^eb mod nb
     BN_mod_exp(x, aes_key, bob_pk->e, bob_pk->n, ctx);
 
-    BIGNUM * sig = BN_new(); // sig = x^da mod na
+    BIGNUM *sig = BN_new(); // sig = x^da mod na
     BN_mod_exp(sig, x, alice_kp->sk->d, alice_kp->sk->n, ctx);
 
-    FILE * file = fopen(SIG_FILE, "w");
+    FILE *file = fopen(SIG_FILE, "w");
     if (file == NULL) {
         fprintf(stderr, "Error opening file\n");
         exit(1);
@@ -76,25 +80,26 @@ void sign(void) {
     keypair_free(alice_kp);
 }
 
-void verify(void) {
+void
+verify(void) {
     printf("Loading Alice's key pair from file %s\n", ALICE_KP_FILE);
-    RSAKeyPair * alice_kp = keypair_load_from_file(ALICE_KP_FILE);
+    RSAKeyPair *alice_kp = keypair_load_from_file(ALICE_KP_FILE);
 
     printf("Loading Bob's public key from file %s\n", BOB_PK_N_FILE);
-    RSAPublicKey * bob_pk = pk_load_from_file(BOB_PK_N_FILE);
+    RSAPublicKey *bob_pk = pk_load_from_file(BOB_PK_N_FILE);
 
-    FILE * file = fopen(SIG_FILE, "r");
+    FILE *file = fopen(SIG_FILE, "r");
     if (file == NULL) {
         fprintf(stderr, "Error opening file\n");
         exit(1);
     }
 
-    BN_CTX * ctx = BN_CTX_new();
+    BN_CTX *ctx = BN_CTX_new();
     BN_CTX_start(ctx);
 
-    BIGNUM * aes_key = bignum_from_file(file);
-    BIGNUM * x = bignum_from_file(file);
-    BIGNUM * sig = bignum_from_file(file);
+    BIGNUM *aes_key = bignum_from_file(file);
+    BIGNUM *x = bignum_from_file(file);
+    BIGNUM *sig = bignum_from_file(file);
     fclose(file);
 
     // Read message c from file
@@ -104,18 +109,20 @@ void verify(void) {
         exit(1);
     }
 
-    // First line is sig_c
-    // BIGNUM * sig_c = bignum_from_file(file);
-
+    // Read signature from file
     char line[LINE_MAX];
     if (fgets(line, LINE_MAX, file) == NULL) {
         fprintf(stderr, "Error: Could not read line from file\n");
         exit(1);
     }
+    size_t line_len = strlen(line) / 2;
+    unsigned char *sig_c = malloc(sizeof(unsigned char) * line_len);
+    for (size_t i = 0, j = 0; i < line_len; i++, j += 2) {
+        sscanf(&line[j], "%02hhx", &sig_c[i]);
+    }
 
-    unsigned int 
-
-    unsigned char * sig_c = NULL;
+    BIGNUM *bn_sig_c = BN_new();
+    BN_bin2bn(sig_c, (int)line_len, bn_sig_c);
 
     // First 16 bytes of message are the IV
     unsigned char iv[16];
@@ -129,7 +136,7 @@ void verify(void) {
     long file_cur = ftell(file);
     fseek(file, 0, SEEK_END);
     long c_len = (ftell(file) - file_cur) / 2;
-    unsigned char * c = malloc(sizeof(unsigned char) * c_len);
+    unsigned char *c = malloc(sizeof(unsigned char) * c_len);
     fseek(file, file_cur, SEEK_SET);
     for (int i = 0; i < c_len; i++) {
         if (fscanf(file, "%02hhx", &c[i]) != 1) {
@@ -141,9 +148,9 @@ void verify(void) {
     fclose(file);
 
     OpenSSL_add_all_algorithms();
-    EVP_MD_CTX * evp_ctx = EVP_MD_CTX_create();
+    EVP_MD_CTX *evp_ctx = EVP_MD_CTX_create();
 
-    const EVP_MD * md = EVP_get_digestbyname("sha256");
+    const EVP_MD *md = EVP_get_digestbyname("sha256");
     if (!md) {
         fprintf(stderr, "Error getting digest\n");
         exit(1);
@@ -153,36 +160,28 @@ void verify(void) {
     unsigned int md_len;
 
     EVP_DigestInit_ex(evp_ctx, md, NULL);
+    EVP_DigestUpdate(evp_ctx, iv, 16);
     EVP_DigestUpdate(evp_ctx, c, c_len);
     EVP_DigestFinal_ex(evp_ctx, md_res, &md_len);
     EVP_MD_CTX_destroy(evp_ctx);
 
-    // Print digest
-    printf("Digest: ");
-    for (unsigned int i = 0; i < md_len; i++) {
-        printf("%02x", md_res[i]);
-    }
-    printf("\n");
-
     // Check if hash = $sig_{c}^{e_b} mod N_b$
-    BIGNUM * hash = BN_new();
+    BIGNUM *hash = BN_new();
     BN_bin2bn(md_res, md_len, hash);
 
-    BN_mod_exp(sig_c, sig_c, bob_pk->e, bob_pk->n, ctx);
-    
-    printf("Hash: %s\n", BN_bn2hex(sig_c));
-
-    BN_cmp(hash, sig_c) == 0 ? printf("Signature verified\n") : printf("Signature not verified\n");
+    BN_mod_exp(bn_sig_c, bn_sig_c, bob_pk->e, bob_pk->n, ctx);
+    BN_cmp(hash, bn_sig_c) == 0 ? printf("Signature verified\n")
+                                : printf("Signature not verified\n");
 
     EVP_cleanup();
-
     BN_CTX_end(ctx);
     BN_CTX_free(ctx);
 
     free(c);
 }
 
-int main(int argc, char ** argv) {
+int
+main(int argc, char **argv) {
     // Possible argv values:
     // gen
     // sign
@@ -193,7 +192,7 @@ int main(int argc, char ** argv) {
         exit(1);
     }
 
-    char const * const mode = argv[1];
+    char const *const mode = argv[1];
 
     if (strcmp(mode, "gen") == 0) {
         gen();

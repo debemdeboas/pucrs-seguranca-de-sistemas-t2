@@ -1,33 +1,36 @@
 #include "rsa.h"
 #include <limits.h>
 
-BIGNUM * bignum_from_file(FILE * file) {
+BIGNUM *
+bignum_from_file(FILE *file) {
     char line[LINE_MAX];
     if (fgets(line, LINE_MAX, file) == NULL) {
         fprintf(stderr, "Error: Could not read line from file\n");
         exit(1);
     }
 
-    BIGNUM * bn = BN_new();
+    BIGNUM *bn = BN_new();
     BN_hex2bn(&bn, line);
 
     return bn;
 }
 
-void bignum_to_file(BIGNUM const * bn, FILE * file) {
-    char * hex = BN_bn2hex(bn);
+void
+bignum_to_file(BIGNUM const *bn, FILE *file) {
+    char *hex = BN_bn2hex(bn);
     fprintf(file, "%s\n", hex);
     free(hex);
 }
 
-RSAPublicKey * pk_load_from_file(char const * filename) {
-    FILE * file = fopen(filename, "r");
+RSAPublicKey *
+pk_load_from_file(char const *filename) {
+    FILE *file = fopen(filename, "r");
     if (file == NULL) {
         fprintf(stderr, "Error: Could not open file %s\n", filename);
         exit(1);
     }
 
-    RSAPublicKey * pk = malloc(sizeof(RSAPublicKey));
+    RSAPublicKey *pk = malloc(sizeof(RSAPublicKey));
     pk->e = bignum_from_file(file);
     pk->n = bignum_from_file(file);
 
@@ -35,14 +38,15 @@ RSAPublicKey * pk_load_from_file(char const * filename) {
     return pk;
 }
 
-RSAKeyPair * keypair_load_from_file(char const * filename) {
-    FILE * file = fopen(filename, "r");
+RSAKeyPair *
+keypair_load_from_file(char const *filename) {
+    FILE *file = fopen(filename, "r");
     if (file == NULL) {
         fprintf(stderr, "Error: Could not open file %s\n", filename);
         exit(1);
     }
 
-    RSAKeyPair * kp = malloc(sizeof(RSAKeyPair));
+    RSAKeyPair *kp = malloc(sizeof(RSAKeyPair));
     kp->sk = malloc(sizeof(SecretKey));
     kp->pk = malloc(sizeof(RSAPublicKey));
 
@@ -55,35 +59,36 @@ RSAKeyPair * keypair_load_from_file(char const * filename) {
     return kp;
 }
 
-RSAKeyPair * keypair_generate(void) {
-    BN_CTX * ctx = BN_CTX_new();
+RSAKeyPair *
+keypair_generate(void) {
+    BN_CTX *ctx = BN_CTX_new();
     BN_CTX_start(ctx);
 
-    BIGNUM * p = BN_new();
-    BIGNUM * q = BN_new();
+    BIGNUM *p = BN_new();
+    BIGNUM *q = BN_new();
 
     BN_generate_prime_ex(p, NUM_BITS, 0, NULL, NULL, NULL);
     BN_generate_prime_ex(q, NUM_BITS, 0, NULL, NULL, NULL);
 
-    BIGNUM * N = BN_new();
+    BIGNUM *N = BN_new();
     BN_mul(N, p, q, ctx);
 
-    BIGNUM * phi = BN_new();
+    BIGNUM *phi = BN_new();
     BN_sub(p, p, BN_value_one());
     BN_sub(q, q, BN_value_one());
     BN_mul(phi, p, q, ctx);
 
-    BIGNUM * e = BN_new();
-    BIGNUM * gcd = BN_new();
+    BIGNUM *e = BN_new();
+    BIGNUM *gcd = BN_new();
     do {
         BN_generate_prime_ex(e, 128, 0, NULL, NULL, NULL);
         BN_gcd(gcd, e, phi, ctx);
     } while (!BN_is_one(gcd));
 
-    BIGNUM * d = BN_new();
+    BIGNUM *d = BN_new();
     BN_mod_inverse(d, e, phi, ctx);
 
-    RSAKeyPair * kp = malloc(sizeof(RSAKeyPair));
+    RSAKeyPair *kp = malloc(sizeof(RSAKeyPair));
     kp->sk = malloc(sizeof(SecretKey));
     kp->pk = malloc(sizeof(RSAPublicKey));
 
@@ -103,8 +108,9 @@ RSAKeyPair * keypair_generate(void) {
     return kp;
 }
 
-void keypair_save_to_file(RSAKeyPair const * kp, char const * filename) {
-    FILE * file = fopen(filename, "w");
+void
+keypair_save_to_file(RSAKeyPair const *kp, char const *filename) {
+    FILE *file = fopen(filename, "w");
     if (file == NULL) {
         fprintf(stderr, "Error: Could not open file %s\n", filename);
         exit(1);
@@ -118,7 +124,8 @@ void keypair_save_to_file(RSAKeyPair const * kp, char const * filename) {
     fclose(file);
 }
 
-void keypair_free(RSAKeyPair * kp) {
+void
+keypair_free(RSAKeyPair *kp) {
     BN_clear_free(kp->sk->d);
     BN_clear_free(kp->sk->n);
     BN_clear_free(kp->pk->e);
