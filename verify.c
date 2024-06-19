@@ -176,6 +176,7 @@ void RSA_sign_message(MessageStream *ms, RSAKeyPair const *kp, BN_CTX *bn_ctx) {
     bool should_free_ctx = false;
     if (bn_ctx == NULL) {
         bn_ctx = BN_CTX_new();
+        BN_CTX_start(bn_ctx);
         should_free_ctx = true;
     }
 
