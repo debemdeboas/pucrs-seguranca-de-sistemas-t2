@@ -5,6 +5,7 @@
 #include <limits.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
+#define __STDC_WANT_LIB_EXT1__
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -226,13 +227,6 @@ unsigned char *decrypt(char const *const filename, int *message_len) {
 }
 
 int main(int argc, char **argv) {
-    // Possible argv values:
-    // gen
-    // sign
-    // verify <file>
-    // decrypt <file>
-    // encrypt <file>
-
     if (argc < 2) {
         help(argv[0]);
         exit(1);
@@ -243,6 +237,7 @@ int main(int argc, char **argv) {
     // Setup OpenSSL random generator
     RAND_poll();
 
+    // Basic modes
     if (strcmp(mode, "gen") == 0) {
         gen();
         exit(0);
@@ -251,8 +246,9 @@ int main(int argc, char **argv) {
         exit(0);
     }
 
-    // Every subsequent mode verifies the message and signature, so we do it here
-
+    // File-related modes
+    // Every subsequent mode verifies the message and signature, so we're using
+    // early returns and cascades (e.g. decrypt is actually verify and then decrypt)
     if (argc < 3) {
         fprintf(stderr, "No file specified\n");
         help(argv[0]);
@@ -270,21 +266,13 @@ int main(int argc, char **argv) {
         exit(0);
     }
 
-    int message_len;
-    unsigned char *message = decrypt(argv[2], &message_len);
-    printf("Message: %s\n", message);
+    // Decryption is used by both encrypt_inv and decrypt.
+    // The encrypt mode doesn't use the decrypted message, so we branch here.
 
-    if (strcmp(mode, "decrypt") == 0) {
-        free(message);
-        exit(0);
-    }
-
+    int alice_message_len;
     unsigned char *alice_message;
-    if (strcmp(mode, "inv") == 0) {
-        // Invert the message
-        alice_message = invert_array(message, message_len);
-        printf("Inverted message: %s\n", alice_message);
-    } else if (strcmp(mode, "encrypt") == 0) {
+
+    if (strcmp(mode, "encrypt") == 0) {
         if (argc < 4) {
             fprintf(stderr, "No message specified\n");
             help(argv[0]);
@@ -293,20 +281,56 @@ int main(int argc, char **argv) {
 
         alice_message = malloc(strlen(argv[3]) + 1);
         strcpy((char *)alice_message, argv[3]);
+        alice_message_len = (int)strlen((char *)alice_message) + 1;
+
+        printf("Message to encrypt: %s\n", alice_message);
+    } else if (strcmp(mode, "encrypt_inv") == 0 || strcmp(mode, "decrypt") == 0) {
+        int message_len;
+        unsigned char *message = decrypt(argv[2], &message_len);
+        printf("Message: %s\n", message);
+
+        // Save the decrypted message to a file
+        char *decrypt_filename = malloc(strlen(argv[2]) + 9);
+        strcpy(decrypt_filename, argv[2]);
+        strcat(decrypt_filename, ".decrypt");
+        FILE *out_file = fopen(decrypt_filename, "w");
+        if (out_file == NULL) {
+            fprintf(stderr, "Error opening file %s\n", decrypt_filename);
+            exit(1);
+        }
+
+        // Since we can't be sure that the message is null-terminated, we use fwrite
+        fwrite(message, sizeof(unsigned char), message_len, out_file);
+        fclose(out_file);
+        free(decrypt_filename);
+
+        if (strcmp(mode, "decrypt") == 0) {
+            free(message);
+            exit(0);
+        }
+
+        // I'm aware that this is a bit of a waste of memory (i.e. we could've
+        // used alice_message_len from the start), but it's easier to read and
+        // understand the code this way.
+        alice_message_len = message_len;
+
+        // Invert the message
+        alice_message = invert_array(message, message_len);
+        printf("Inverted message: %s\n", alice_message);
+        free(message);
     } else {
         fprintf(stderr, "Invalid mode\n");
         help(argv[0]);
         exit(1);
     }
 
-    MessageStream *msg_alice = encrypt_and_sign(alice_message, message_len);
+    MessageStream *msg_alice = encrypt_and_sign(alice_message, alice_message_len);
 
     char *out_filename = malloc(strlen(argv[2]) + 8);
     strcpy(out_filename, argv[2]);
     strcat(out_filename, ".alice");
     MS_save_to_file(msg_alice, out_filename);
 
-    free(message);
     free(alice_message);
     free(out_filename);
     MS_destroy(msg_alice);

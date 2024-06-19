@@ -30,4 +30,4 @@ clean:
 	rm -f valgrind-out.txt
 
 valgrind: $(TARGET)
-	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=valgrind-out.txt ./$(TARGET) verify
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=valgrind-out.txt ./$(TARGET) decrypt other.txt
