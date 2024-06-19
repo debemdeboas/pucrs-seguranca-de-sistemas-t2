@@ -1,6 +1,7 @@
 #ifndef RSA_H
 #define RSA_H
 
+#include "util.h"
 #include <limits.h>
 #include <openssl/bn.h>
 #include <stdio.h>
@@ -11,10 +12,10 @@
 
 #define NUM_BITS 1024
 
-typedef struct SecretKey {
+typedef struct RSASecretKey {
     BIGNUM *d;
     BIGNUM *n;
-} SecretKey;
+} RSASecretKey;
 
 typedef struct RSAPublicKey {
     BIGNUM *e;
@@ -22,18 +23,15 @@ typedef struct RSAPublicKey {
 } RSAPublicKey;
 
 typedef struct RSAKeyPair {
-    SecretKey *sk;
+    RSASecretKey *sk;
     RSAPublicKey *pk;
 } RSAKeyPair;
 
-BIGNUM *bignum_from_file(FILE *file);
-void bignum_to_file(BIGNUM const *bn, FILE *file);
+RSAPublicKey *RSAPKey_load_from_file(char const *filename);
 
-RSAPublicKey *pk_load_from_file(char const *filename);
-
-RSAKeyPair *keypair_load_from_file(char const *filename);
-RSAKeyPair *keypair_generate(void);
-void keypair_save_to_file(RSAKeyPair const *kp, char const *filename);
-void keypair_free(RSAKeyPair *kp);
+RSAKeyPair *RSAKP_load_from_file(char const *filename);
+RSAKeyPair *RSAKP_generate(void);
+void RSAKP_to_file(RSAKeyPair const *kp, char const *filename);
+void RSAKP_free(RSAKeyPair *kp);
 
 #endif
