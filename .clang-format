@@ -1,5 +1,5 @@
 ---
-BasedOnStyle: GNU
+BasedOnStyle: Microsoft
 
 UseTab: Never
 IndentWidth: 4
