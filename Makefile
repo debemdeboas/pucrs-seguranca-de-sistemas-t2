@@ -8,7 +8,7 @@ CFLAGS += -L/usr/lib -I/usr/lib
 LDFLAGS = -lssl -lcrypto
 
 TARGET = main
-SRCS = main.c rsa.c
+SRCS = main.c util.c rsa.c verify.c
 OBJS = $(SRCS:.c=.o)
 DEPS = $(OBJS:.o=.d)
 
@@ -25,12 +25,9 @@ $(TARGET): $(OBJS)
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-%.dep.mk: %.c
-	$(CC) -M -MP -MT '$(<:.c=.o) $@' $(CPPFLAGS) $< > $@
-
 clean:
 	rm -f $(OBJS) $(TARGET)
 	rm -f valgrind-out.txt
 
 valgrind: $(TARGET)
-	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=valgrind-out.txt ./$(TARGET)
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=valgrind-out.txt ./$(TARGET) verify
