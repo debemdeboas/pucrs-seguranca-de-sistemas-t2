@@ -9,6 +9,10 @@
         "istream": "c",
         "streambuf": "c",
         "rsa.h": "c",
-        "unistd.h": "c"
+        "unistd.h": "c",
+        "random": "c",
+        "queue": "c",
+        "verify.h": "c",
+        "util.h": "c"
     }
 }
