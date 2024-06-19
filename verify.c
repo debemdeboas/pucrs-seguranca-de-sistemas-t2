@@ -36,10 +36,34 @@ MessageStream *MS_load_from_file(char const *filename) {
     return ms;
 }
 
-void MS_destroy(MessageStream *ms) {
-    if (ms->sig) {
-        BN_free(ms->sig);
+void MS_save_to_file(MessageStream const *ms, char const *filename) {
+    // Save (c_inv, sig_hinv) to file
+    FILE *file = fopen(filename, "w");
+    if (file == NULL) {
+        fprintf(stderr, "Error opening file %s\n", filename);
+        exit(1);
     }
+
+    // Save IV
+    for (int i = 0; i < 16; i++) {
+        fprintf(file, "%02X", ms->iv[i]);
+    }
+
+    // Save message (same line as IV)
+    for (int i = 0; i < (int)ms->c_len; i++) {
+        fprintf(file, "%02X", ms->c[i]);
+    }
+
+    fprintf(file, "\n");
+
+    // Save signature
+    BN_to_file(ms->sig, file);
+
+    fclose(file);
+}
+
+void MS_destroy(MessageStream *ms) {
+    BN_free(ms->sig);
     free(ms->c);
     free(ms);
 }
@@ -64,7 +88,7 @@ void MS_calc_digest(unsigned char **res, unsigned int *len, MessageStream const 
     EVP_cleanup();
 }
 
-unsigned char *AES_load_key_from_file(const char *filename) {
+unsigned char *CIPHER_load_key_from_file(const char *filename) {
     BIGNUM *bn_aes_key_s = BN_one_from_file(filename);
 
     size_t aes_key_s_len = BN_num_bytes(bn_aes_key_s);
@@ -81,7 +105,7 @@ unsigned char *AES_load_key_from_file(const char *filename) {
     return aes_key_s;
 }
 
-unsigned char *AES_decrypt_message(MessageStream const *ms, unsigned char const *aes_key_s, int *decrypted_len) {
+unsigned char *CIPHER_decrypt_message(MessageStream const *ms, unsigned char const *aes_key_s, int *decrypted_len) {
     EVP_CIPHER_CTX *evp_cip_ctx_d = EVP_CIPHER_CTX_new();
     EVP_CIPHER *cip = EVP_CIPHER_fetch(NULL, EVP_CIPHER_CHOICE, NULL);
 
@@ -104,8 +128,8 @@ unsigned char *AES_decrypt_message(MessageStream const *ms, unsigned char const 
     return decrypted;
 }
 
-void AES_encrypt_message(MessageStream *ms, unsigned char const *aes_key_s, unsigned char const *plaintext,
-                         int plaintext_len) {
+void CIPHER_encrypt_message(MessageStream *ms, unsigned char const *aes_key_s, unsigned char const *plaintext,
+                            int plaintext_len) {
     // Generate IV
     RAND_bytes(ms->iv, 16);
 
@@ -129,7 +153,7 @@ void AES_encrypt_message(MessageStream *ms, unsigned char const *aes_key_s, unsi
     EVP_CIPHER_free(cip);
 }
 
-bool verify_signature(MessageStream const *ms, RSAPublicKey const *bob_pk, BN_CTX *bn_ctx) {
+bool RSA_verify_signature(MessageStream const *ms, RSAPublicKey const *bob_pk, BN_CTX *bn_ctx) {
     // Calculate digest of the message
     unsigned char *digest;
     unsigned int digest_len;
@@ -148,7 +172,13 @@ bool verify_signature(MessageStream const *ms, RSAPublicKey const *bob_pk, BN_CT
     return verified;
 }
 
-void sign_message(MessageStream *ms, RSAKeyPair const *kp, BN_CTX *bn_ctx) {
+void RSA_sign_message(MessageStream *ms, RSAKeyPair const *kp, BN_CTX *bn_ctx) {
+    bool should_free_ctx = false;
+    if (bn_ctx == NULL) {
+        bn_ctx = BN_CTX_new();
+        should_free_ctx = true;
+    }
+
     // Calculate digest of the message
     unsigned char *digest;
     unsigned int digest_len;
@@ -160,4 +190,9 @@ void sign_message(MessageStream *ms, RSAKeyPair const *kp, BN_CTX *bn_ctx) {
     BN_mod_exp(ms->sig, ms->sig, kp->sk->d, kp->sk->n, bn_ctx);
 
     free(digest);
+
+    if (should_free_ctx) {
+        BN_CTX_end(bn_ctx);
+        BN_CTX_free(bn_ctx);
+    }
 }

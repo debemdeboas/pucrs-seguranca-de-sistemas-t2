@@ -25,14 +25,15 @@ typedef struct MessageStream {
 
 MessageStream *MS_load_from_file(char const *filename);
 void MS_calc_digest(unsigned char **res, unsigned int *len, MessageStream const *ms, char const *digest);
+void MS_save_to_file(MessageStream const *ms, char const *filename);
 void MS_destroy(MessageStream *ms);
 
-unsigned char *AES_load_key_from_file(const char *filename);
-unsigned char *AES_decrypt_message(MessageStream const *msg, unsigned char const *aes_key_s, int *cipher_final_len);
-void AES_encrypt_message(MessageStream *msg, unsigned char const *aes_key_s, unsigned char const *plaintext,
-                         int plaintext_len);
+unsigned char *CIPHER_load_key_from_file(const char *filename);
+unsigned char *CIPHER_decrypt_message(MessageStream const *msg, unsigned char const *aes_key_s, int *cipher_final_len);
+void CIPHER_encrypt_message(MessageStream *msg, unsigned char const *aes_key_s, unsigned char const *plaintext,
+                            int plaintext_len);
 
-bool verify_signature(MessageStream const *ms, RSAPublicKey const *bob_pk, BN_CTX *bn_ctx);
-void sign_message(MessageStream *ms, RSAKeyPair const *alice_kp, BN_CTX *bn_ctx);
+bool RSA_verify_signature(MessageStream const *ms, RSAPublicKey const *bob_pk, BN_CTX *bn_ctx);
+void RSA_sign_message(MessageStream *ms, RSAKeyPair const *alice_kp, BN_CTX *bn_ctx);
 
 #endif
