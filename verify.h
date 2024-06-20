@@ -28,6 +28,9 @@ void MS_calc_digest(unsigned char **res, unsigned int *len, MessageStream const 
 void MS_save_to_file(MessageStream const *ms, char const *filename);
 void MS_destroy(MessageStream *ms);
 
+MessageStream *encrypt_and_sign(unsigned char const *const message, int const message_len);
+unsigned char *decrypt_file(char const *const filename, int *message_len);
+
 unsigned char *CIPHER_load_key_from_file(const char *filename);
 unsigned char *CIPHER_decrypt_message(MessageStream const *msg, unsigned char const *aes_key_s, int *cipher_final_len);
 void CIPHER_encrypt_message(MessageStream *msg, unsigned char const *aes_key_s, unsigned char const *plaintext,
