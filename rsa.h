@@ -1,7 +1,8 @@
 #ifndef RSA_H
 #define RSA_H
 
-#include "util.h"
+#include "bn.h"
+#include "types.h"
 #include <limits.h>
 #include <openssl/bn.h>
 #include <stdio.h>
@@ -11,21 +12,6 @@
 #include <unistd.h>
 
 #define NUM_BITS 1024
-
-typedef struct RSASecretKey {
-    BIGNUM *d;
-    BIGNUM *n;
-} RSASecretKey;
-
-typedef struct RSAPublicKey {
-    BIGNUM *e;
-    BIGNUM *n;
-} RSAPublicKey;
-
-typedef struct RSAKeyPair {
-    RSASecretKey *sk;
-    RSAPublicKey *pk;
-} RSAKeyPair;
 
 RSAPublicKey *RSAPKey_load_from_file(char const *filename);
 

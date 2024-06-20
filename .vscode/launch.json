@@ -19,7 +19,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceRoot}/main",
-            "args": ["encrypt", "other.txt", "\"hi there\""],
+            "args": ["encrypt", "message.txt", "\"hi there bob hopw are you today'? \""],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

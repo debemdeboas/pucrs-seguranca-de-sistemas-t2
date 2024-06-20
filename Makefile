@@ -8,7 +8,7 @@ CFLAGS += -L/usr/lib -I/usr/lib
 LDFLAGS = -lssl -lcrypto
 
 TARGET = main
-SRCS = main.c util.c rsa.c verify.c
+SRCS = main.c util.c bn.c rsa.c cipher.c
 OBJS = $(SRCS:.c=.o)
 DEPS = $(OBJS:.o=.d)
 

@@ -1,5 +1,4 @@
 {
-    "sonarlint.pathToCompileCommands": "${workspaceFolder}/.vscode/compile_commands.json",
     "makefile.compileCommandsPath": ".vscode/compile_commands.json",
     "files.associations": {
         "bn.h": "c",
@@ -12,7 +11,10 @@
         "unistd.h": "c",
         "random": "c",
         "queue": "c",
-        "verify.h": "c",
-        "util.h": "c"
-    }
+        "cipher.h": "c",
+        "util.h": "c",
+        "stdio.h": "c",
+        "stdbool.h": "c"
+    },
+    "sonarlint.pathToCompileCommands": "${workspaceFolder}/.vscode/compile_commands.json"
 }

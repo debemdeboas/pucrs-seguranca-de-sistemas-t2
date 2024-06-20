@@ -61,18 +61,14 @@
     "F969003F8DC92E0B7016CAF870EA3EA3C138F8A51BF53442E4D31C345F3E7423262E3DDC3E9F2331CFA387EEABE35E105AE8269D9942711A" \
     "454EE6D1EA46D24714DE7DAD1C1C3CA446C7C2A687BD39AA7C8CDCA04E6EC64849E91BA46F0FC3D1464582E2A826F16F75\n"
 
+#include "cipher.h"
 #include "rsa.h"
+#include "types.h"
 #include "util.h"
-#include "verify.h"
-#include <ctype.h>
-#include <limits.h>
-#include <openssl/evp.h>
 #include <openssl/rand.h>
 #define __STDC_WANT_LIB_EXT1__
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
 
 void help(char const *const name);
 
