@@ -12,12 +12,12 @@ SRCS = main.c util.c rsa.c verify.c
 OBJS = $(SRCS:.c=.o)
 DEPS = $(OBJS:.o=.d)
 
+all: CFLAGS += -O2
+all: $(TARGET)
+
 debug: CFLAGS += -DDEBUG -g
 debug: CFLAGS += -O0
 debug: $(TARGET)
-
-all: CFLAGS += -O2
-all: $(TARGET)
 
 $(TARGET): $(OBJS)
 	$(CC) $^ -o $@ $(LDFLAGS)
