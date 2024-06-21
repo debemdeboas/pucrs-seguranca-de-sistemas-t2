@@ -66,7 +66,6 @@
 #include "types.h"
 #include "util.h"
 #include <openssl/rand.h>
-#define __STDC_WANT_LIB_EXT1__
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -105,7 +104,7 @@ int main(int argc, char **argv) {
         write_string_to_file("message_inv.txt", SAMPLE_MESSAGE_INV);
         write_string_to_file("message_2.txt", SAMPLE_MESSAGE_2);
 
-        fprintf(stderr, "Example files written\n");
+        printf("Example files written\n");
         exit(0);
     }
 
@@ -238,11 +237,7 @@ void sign(void) {
     BIGNUM *sig = BN_new(); // sig = x^da mod na
     BN_mod_exp(sig, x, alice_kp->sk->d, alice_kp->sk->n, ctx);
 
-    FILE *file = fopen(SIG_FILE, "w");
-    if (file == NULL) {
-        fprintf(stderr, "Error opening file\n");
-        exit(1);
-    }
+    FILE *file = open_file(SIG_FILE, "w");
 
     BN_to_file(aes_key, file);
     BN_to_file(x, file);
@@ -278,10 +273,7 @@ bool verify(char const *const filename) {
 
     MS_destroy(msg_bob);
 
-    BN_free(bob_pk->e);
-    BN_free(bob_pk->n);
-    free(bob_pk);
-
+    RSAPKey_free(bob_pk);
     BN_CTX_end(bn_ctx);
     BN_CTX_free(bn_ctx);
 

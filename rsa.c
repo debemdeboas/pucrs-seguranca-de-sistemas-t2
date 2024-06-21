@@ -1,11 +1,7 @@
 #include "rsa.h"
 
 RSAPublicKey *RSAPKey_load_from_file(char const *filename) {
-    FILE *file = fopen(filename, "r");
-    if (file == NULL) {
-        fprintf(stderr, "Error: Could not open file %s\n", filename);
-        exit(1);
-    }
+    FILE *file = open_file(filename, "r");
 
     RSAPublicKey *pk = malloc(sizeof(RSAPublicKey));
     pk->e = BN_from_file(file);
@@ -15,12 +11,14 @@ RSAPublicKey *RSAPKey_load_from_file(char const *filename) {
     return pk;
 }
 
+void RSAPKey_free(RSAPublicKey *pk) {
+    BN_free(pk->e);
+    BN_free(pk->n);
+    free(pk);
+}
+
 RSAKeyPair *RSAKP_load_from_file(char const *filename) {
-    FILE *file = fopen(filename, "r");
-    if (file == NULL) {
-        fprintf(stderr, "Error: Could not open file %s\n", filename);
-        exit(1);
-    }
+    FILE *file = open_file(filename, "r");
 
     RSAKeyPair *kp = malloc(sizeof(RSAKeyPair));
     kp->sk = malloc(sizeof(RSASecretKey));
@@ -84,11 +82,7 @@ RSAKeyPair *RSAKP_generate(void) {
 }
 
 void RSAKP_to_file(RSAKeyPair const *kp, char const *filename) {
-    FILE *file = fopen(filename, "w");
-    if (file == NULL) {
-        fprintf(stderr, "Error: Could not open file %s\n", filename);
-        exit(1);
-    }
+    FILE *file = open_file(filename, "w");
 
     BN_to_file(kp->sk->d, file);
     BN_to_file(kp->sk->n, file);

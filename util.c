@@ -10,12 +10,13 @@ unsigned char *invert_array(unsigned char const *const arr, size_t const len) {
 }
 
 void write_string_to_file(char const *const filename, char const *const str) {
-    FILE *file = fopen(filename, "w");
-    if (file == NULL) {
-        fprintf(stderr, "Error opening file %s\n", filename);
-        exit(1);
-    }
-    fprintf(file, "%s", str);
+    write_to_file(filename, (unsigned char const *)str, strlen(str), "w");
+}
+
+void write_to_file(char const *const filename, unsigned char const *const data, size_t const data_len,
+                   char const *const mode) {
+    FILE *file = open_file(filename, mode);
+    fwrite(data, sizeof(unsigned char), data_len, file);
     fclose(file);
 }
 
@@ -96,4 +97,14 @@ unsigned char *decrypt_file(char const *const filename, int *message_len) {
     free(aes_key_s);
 
     return decrypted_message;
+}
+
+FILE *open_file(char const *const filename, char const *const mode) {
+    FILE *file = fopen(filename, mode);
+    if (file == NULL) {
+        fprintf(stderr, "Error opening file %s\n", filename);
+        exit(1);
+    }
+
+    return file;
 }

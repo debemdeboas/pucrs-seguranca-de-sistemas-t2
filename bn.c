@@ -14,11 +14,7 @@ BIGNUM *BN_from_file(FILE *file) {
 }
 
 BIGNUM *BN_one_from_file(char const *filename) {
-    FILE *file = fopen(filename, "r");
-    if (file == NULL) {
-        fprintf(stderr, "Error opening file %s\n", filename);
-        exit(1);
-    }
+    FILE *file = open_file(filename, "r");
     BIGNUM *ret = BN_from_file(file);
     fclose(file);
     return ret;

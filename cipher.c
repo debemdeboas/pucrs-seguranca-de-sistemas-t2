@@ -1,11 +1,7 @@
 #include "cipher.h"
 
 MessageStream *MS_load_from_file(char const *filename) {
-    FILE *file = fopen(filename, "r");
-    if (file == NULL) {
-        fprintf(stderr, "Error: Could not open file %s\n", filename);
-        exit(1);
-    }
+    FILE *file = open_file(filename, "r");
 
     MessageStream *ms = malloc(sizeof(MessageStream));
     ms->sig = BN_from_file(file);
@@ -38,11 +34,10 @@ MessageStream *MS_load_from_file(char const *filename) {
 
 void MS_save_to_file(MessageStream const *ms, char const *filename) {
     // Save (c_inv, sig_hinv) to file
-    FILE *file = fopen(filename, "w");
-    if (file == NULL) {
-        fprintf(stderr, "Error opening file %s\n", filename);
-        exit(1);
-    }
+    FILE *file = open_file(filename, "w");
+
+    // Save signature
+    BN_to_file(ms->sig, file);
 
     // Save IV
     for (int i = 0; i < 16; i++) {
@@ -55,9 +50,6 @@ void MS_save_to_file(MessageStream const *ms, char const *filename) {
     }
 
     fprintf(file, "\n");
-
-    // Save signature
-    BN_to_file(ms->sig, file);
 
     fclose(file);
 }
@@ -89,23 +81,23 @@ void MS_destroy(MessageStream *ms) {
 }
 
 unsigned char *CIPHER_load_key_from_file(const char *filename) {
-    BIGNUM *bn_aes_key_s = BN_one_from_file(filename);
+    BIGNUM *bn_cipher_key_s = BN_one_from_file(filename);
+    size_t cipher_key_s_len = BN_num_bytes(bn_cipher_key_s);
+    unsigned char *cipher_key_s = malloc(sizeof(unsigned char) * cipher_key_s_len);
+    BN_bn2bin(bn_cipher_key_s, cipher_key_s);
 
-    size_t aes_key_s_len = BN_num_bytes(bn_aes_key_s);
-    unsigned char *aes_key_s = malloc(sizeof(unsigned char) * aes_key_s_len);
-    BN_bn2bin(bn_aes_key_s, aes_key_s);
-
-    // Shift the key by one byte, pad with 0x00 and discard the last byte
-    if (aes_key_s[0] >= 0x9) {
-        memmove(aes_key_s + 1, aes_key_s, aes_key_s_len - 1);
-        aes_key_s[0] = 0;
+    // Shift the key by one byte, pad with 0x00 and discard the last byte.
+    // This is only needed because we know the other side (Bob) uses Java.
+    if (cipher_key_s[0] >= 0x9) {
+        memmove(cipher_key_s + 1, cipher_key_s, cipher_key_s_len - 1);
+        cipher_key_s[0] = 0;
     }
 
-    BN_free(bn_aes_key_s);
-    return aes_key_s;
+    BN_free(bn_cipher_key_s);
+    return cipher_key_s;
 }
 
-unsigned char *CIPHER_decrypt_message(MessageStream const *ms, unsigned char const *aes_key_s, int *decrypted_len) {
+unsigned char *CIPHER_decrypt_message(MessageStream const *ms, unsigned char const *cipher_key_s, int *decrypted_len) {
     EVP_CIPHER_CTX *evp_cip_ctx_d = EVP_CIPHER_CTX_new();
     EVP_CIPHER *cip = EVP_CIPHER_fetch(NULL, EVP_CIPHER_CHOICE, NULL);
 
@@ -114,7 +106,7 @@ unsigned char *CIPHER_decrypt_message(MessageStream const *ms, unsigned char con
     *decrypted_len = 0;
 
     EVP_CIPHER_CTX_init(evp_cip_ctx_d);
-    EVP_DecryptInit_ex(evp_cip_ctx_d, cip, NULL, aes_key_s, ms->iv);
+    EVP_DecryptInit_ex(evp_cip_ctx_d, cip, NULL, cipher_key_s, ms->iv);
     EVP_DecryptUpdate(evp_cip_ctx_d, decrypted, &cipher_out_len, ms->c, (int)ms->c_len);
     *decrypted_len += cipher_out_len;
     EVP_DecryptFinal_ex(evp_cip_ctx_d, decrypted + cipher_out_len, &cipher_out_len);
@@ -128,8 +120,8 @@ unsigned char *CIPHER_decrypt_message(MessageStream const *ms, unsigned char con
     return decrypted;
 }
 
-void CIPHER_encrypt_message(MessageStream *ms, unsigned char const *aes_key_s, unsigned char const *plaintext,
-                            int plaintext_len) {
+void CIPHER_encrypt_message(MessageStream *ms, unsigned char const *cipher_key_s, unsigned char const *data,
+                            int data_len) {
     // Generate IV
     RAND_bytes(ms->iv, 16);
 
@@ -137,15 +129,15 @@ void CIPHER_encrypt_message(MessageStream *ms, unsigned char const *aes_key_s, u
     EVP_CIPHER_CTX *evp_cip_ctx_e = EVP_CIPHER_CTX_new();
     EVP_CIPHER *cip = EVP_CIPHER_fetch(NULL, EVP_CIPHER_CHOICE, NULL);
 
-    ms->c = malloc(sizeof(unsigned char) * (plaintext_len + EVP_CIPHER_block_size(cip)));
+    ms->c = malloc(sizeof(unsigned char) * (data_len + EVP_CIPHER_block_size(cip)));
 
     int cipher_out_len;
 
     EVP_CIPHER_CTX_init(evp_cip_ctx_e);
-    EVP_EncryptInit_ex(evp_cip_ctx_e, cip, NULL, aes_key_s, ms->iv);
-    EVP_EncryptUpdate(evp_cip_ctx_e, ms->c, &cipher_out_len, plaintext, plaintext_len);
+    EVP_EncryptInit_ex(evp_cip_ctx_e, cip, NULL, cipher_key_s, ms->iv);
+    EVP_EncryptUpdate(evp_cip_ctx_e, ms->c, &cipher_out_len, data, data_len);
     ms->c_len = cipher_out_len;
-    EVP_EncryptFinal_ex(evp_cip_ctx_e, ms->c + plaintext_len, &cipher_out_len);
+    EVP_EncryptFinal_ex(evp_cip_ctx_e, ms->c + data_len, &cipher_out_len);
     ms->c_len += cipher_out_len;
 
     EVP_CIPHER_CTX_cleanup(evp_cip_ctx_e);
