@@ -14,7 +14,8 @@
         "cipher.h": "c",
         "util.h": "c",
         "stdio.h": "c",
-        "stdbool.h": "c"
+        "stdbool.h": "c",
+        "rand.h": "c"
     },
     "sonarlint.pathToCompileCommands": "${workspaceFolder}/.vscode/compile_commands.json"
 }
