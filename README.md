@@ -1,10 +1,11 @@
 # [Segurança de Sistemas - T2: RSA, AES, SHA](https://github.com/debemdeboas/pucrs-seguranca-de-sistemas-t2)
 
-This project is a simple implementation of RSA, AES, and SHA.
+This project is a simplified implementation of RSA, AES, and SHA message signing and encryption.
 It can:
-- generate a simple key pair,
+- generate an RSA key pair,
+- generate a symmetric key using AES-128, encipher it, sign it, and save it to a file,
 - verify message signatures given a known public key,
-- encrypt and decrypt messages using AES-128, but the code is prepared to use any cipher
+- encrypt and decrypt messages using AES-128
 
 ## Examples
 
