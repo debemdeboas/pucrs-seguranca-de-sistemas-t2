@@ -59,14 +59,14 @@ bool RSA_verify_signature(MessageStream const *ms, RSAPublicKey const *pk, BN_CT
 /// @param bn_ctx BN_CTX to use for calculations. If NULL, a new BN_CTX will be created and freed after the operation.
 void RSA_sign_message(MessageStream *ms, RSAKeyPair const *kp, BN_CTX *bn_ctx);
 
-/// @brief Load Alice's key pair from file, encrypt a message with AES (load key from SIG_FILE), and sign the message
-/// with RSA.
+/// @brief Load Alice's key pair from file, load CIPHER key from `SIG_FILE`, encrypt the message using CIPHER, and sign
+/// the message with RSA.
 /// @param message Message to encrypt and sign
 /// @param message_len Length of the message
 /// @return MessageStream containing the encrypted and signed message
 MessageStream *encrypt_and_sign(unsigned char const *const message, int const message_len);
 
-/// @brief Decrypt a message from a file using AES (key loaded from SIG_FILE).
+/// @brief Decrypt a message from a file using CIPHER (CIPHER key is loaded from `SIG_FILE`)
 /// @param filename File to read the message from
 /// @param message_len Length of the decrypted message (output)
 /// @return Decrypted message (must be freed by the caller)

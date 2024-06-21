@@ -69,18 +69,18 @@ MessageStream *encrypt_and_sign(unsigned char const *const message, int const me
     printf("Loading Alice's key pair from file %s\n", ALICE_KP_FILE);
     RSAKeyPair *const alice_kp = RSAKP_load_from_file(ALICE_KP_FILE);
 
-    unsigned char *aes_key_s = CIPHER_load_key_from_file(SIG_FILE);
+    unsigned char *cipher_key_s = CIPHER_load_key_from_file(SIG_FILE);
 
     // MessageStream for the inverted message
     MessageStream *msg_alice = malloc(sizeof(MessageStream));
 
-    CIPHER_encrypt_message(msg_alice, aes_key_s, message, message_len + 1);
+    CIPHER_encrypt_message(msg_alice, cipher_key_s, message, message_len + 1);
     RSA_sign_message(msg_alice, alice_kp, NULL);
 
     // Cleanup
 
     RSAKP_free(alice_kp);
-    free(aes_key_s);
+    free(cipher_key_s);
 
     return msg_alice;
 }
@@ -88,13 +88,13 @@ MessageStream *encrypt_and_sign(unsigned char const *const message, int const me
 unsigned char *decrypt_file(char const *const filename, int *message_len) {
     MessageStream *msg_bob = MS_load_from_file(filename);
 
-    // Decrypt message c with AES (key s, CBC, PKCS) where m=AES^{-1}(c, s)
-    unsigned char *aes_key_s = CIPHER_load_key_from_file(SIG_FILE);
-    unsigned char *decrypted_message = CIPHER_decrypt_message(msg_bob, aes_key_s, message_len);
+    // Decrypt message c with CIPHER (key s, CBC, PKCS) where m=CIP^{-1}(c, s)
+    unsigned char *cipher_key_s = CIPHER_load_key_from_file(SIG_FILE);
+    unsigned char *decrypted_message = CIPHER_decrypt_message(msg_bob, cipher_key_s, message_len);
 
     // Cleanup
     MS_destroy(msg_bob);
-    free(aes_key_s);
+    free(cipher_key_s);
 
     return decrypted_message;
 }
