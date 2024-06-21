@@ -28,6 +28,10 @@ $(TARGET): $(OBJS)
 clean:
 	rm -f $(OBJS) $(TARGET)
 	rm -f valgrind-out.txt
+	rm -rf doc/latex doc/html
 
 valgrind: $(TARGET)
 	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=valgrind-out.txt ./$(TARGET) decrypt other.txt
+
+docs:
+	doxygen Doxyfile
