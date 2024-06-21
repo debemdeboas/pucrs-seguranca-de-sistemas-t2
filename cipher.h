@@ -59,7 +59,7 @@ unsigned char *CIPHER_decrypt_message(MessageStream const *ms, unsigned char con
 /// @param cipher_key_s Cipher key to use
 /// @param data Message to encrypt
 /// @param data_len Length of the message
-void CIPHER_encrypt_message(MessageStream *msg, unsigned char const *cipher_key_s, unsigned char const *data,
+void CIPHER_encrypt_message(MessageStream *ms, unsigned char const *cipher_key_s, unsigned char const *data,
                             int data_len);
 
 #endif

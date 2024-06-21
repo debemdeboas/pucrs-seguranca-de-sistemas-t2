@@ -46,10 +46,10 @@ FILE *open_file(char const *const filename, char const *const mode);
 /// @brief Verify Bob's signature on a message by checking if the hash of the message is equal to the signature raised
 /// to Bob's public exponent modulo Bob's public N.
 /// @param ms MessageStream containing the message and signature
-/// @param bob_pk Bob's public key
+/// @param pk Bob's public key
 /// @param bn_ctx BN_CTX to use for calculations
 /// @return True if the signature is verified, false otherwise
-bool RSA_verify_signature(MessageStream const *ms, RSAPublicKey const *bob_pk, BN_CTX *bn_ctx);
+bool RSA_verify_signature(MessageStream const *ms, RSAPublicKey const *pk, BN_CTX *bn_ctx);
 
 /// @brief Sign a message by calculating the digest of the message and raising it to the private exponent modulo the
 /// private N. The signature is stored in the message `ms->sig`.
@@ -57,7 +57,7 @@ bool RSA_verify_signature(MessageStream const *ms, RSAPublicKey const *bob_pk, B
 /// Message signature is stored in `msg->sig`.
 /// @param kp RSAKeyPair containing the private key to sign the message
 /// @param bn_ctx BN_CTX to use for calculations. If NULL, a new BN_CTX will be created and freed after the operation.
-void RSA_sign_message(MessageStream *ms, RSAKeyPair const *alice_kp, BN_CTX *bn_ctx);
+void RSA_sign_message(MessageStream *ms, RSAKeyPair const *kp, BN_CTX *bn_ctx);
 
 /// @brief Load Alice's key pair from file, encrypt a message with AES (load key from SIG_FILE), and sign the message
 /// with RSA.

@@ -20,7 +20,7 @@ void write_to_file(char const *const filename, unsigned char const *const data, 
     fclose(file);
 }
 
-bool RSA_verify_signature(MessageStream const *ms, RSAPublicKey const *bob_pk, BN_CTX *bn_ctx) {
+bool RSA_verify_signature(MessageStream const *ms, RSAPublicKey const *pk, BN_CTX *bn_ctx) {
     // Calculate digest of the message
     unsigned char *digest;
     unsigned int digest_len;
@@ -30,7 +30,7 @@ bool RSA_verify_signature(MessageStream const *ms, RSAPublicKey const *bob_pk, B
     BIGNUM *hash = BN_new();
     BN_bin2bn(digest, digest_len, hash);
 
-    BN_mod_exp(ms->sig, ms->sig, bob_pk->e, bob_pk->n, bn_ctx);
+    BN_mod_exp(ms->sig, ms->sig, pk->e, pk->n, bn_ctx);
     bool verified = BN_cmp(hash, ms->sig) == 0;
 
     free(digest);
