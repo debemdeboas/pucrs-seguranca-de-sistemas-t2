@@ -141,10 +141,7 @@ int main(int argc, char **argv) {
             exit(1);
         }
 
-        alice_message = malloc(strlen(argv[3]) + 1);
-        strcpy((char *)alice_message, argv[3]);
-        alice_message_len = (int)strlen((char *)alice_message) + 1;
-
+        alice_message_len = asprintf((char **)&alice_message, "%s", argv[3]);
         printf("Message to encrypt: %s\n", alice_message);
     } else if (strcmp(mode, "encrypt_inv") == 0 || strcmp(mode, "decrypt") == 0) {
         int message_len;
@@ -152,18 +149,12 @@ int main(int argc, char **argv) {
         printf("Message: %s\n", message);
 
         // Save the decrypted message to a file
-        char *decrypt_filename = malloc(strlen(argv[2]) + 9);
-        strcpy(decrypt_filename, argv[2]);
-        strcat(decrypt_filename, ".decrypt");
-        FILE *out_file = fopen(decrypt_filename, "w");
-        if (out_file == NULL) {
-            fprintf(stderr, "Error opening file %s\n", decrypt_filename);
-            exit(1);
-        }
+        char *decrypt_filename;
+        (void)!asprintf(&decrypt_filename, "%s.decrypt", argv[2]);
 
-        // Since we can't be sure that the message is null-terminated, we use fwrite
-        fwrite(message, sizeof(unsigned char), message_len, out_file);
-        fclose(out_file);
+        // Since we can't be sure that the data is null-terminated, don't use
+        // string functions
+        write_to_file(decrypt_filename, message, message_len, "w");
         free(decrypt_filename);
 
         if (strcmp(mode, "decrypt") == 0) {
@@ -188,13 +179,12 @@ int main(int argc, char **argv) {
 
     MessageStream *msg_alice = encrypt_and_sign(alice_message, alice_message_len);
 
-    char *out_filename = malloc(strlen(argv[2]) + 8);
-    strcpy(out_filename, argv[2]);
-    strcat(out_filename, ".alice");
+    char *out_filename;
+    (void)!asprintf(&out_filename, "%s.alice", argv[2]);
     MS_save_to_file(msg_alice, out_filename);
+    free(out_filename);
 
     free(alice_message);
-    free(out_filename);
     MS_destroy(msg_alice);
 
     return 0;
