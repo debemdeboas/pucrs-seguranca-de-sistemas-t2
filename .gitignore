@@ -53,3 +53,11 @@ dkms.conf
 compile_commands.json
 main
 valgrind-out.txt
+
+doc/
+*.pk
+*.kp
+*.alice
+*.decrypt
+message*.txt
+sig.txt
