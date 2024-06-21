@@ -1,9 +1,9 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -Wpedantic \
+CFLAGS = -std=gnu11 -D_GNU_SOURCE -D__STDC_WANT_LIB_EXT2__=1
+CFLAGS += -Wall -Wextra -Wpedantic \
           -Wformat=2 -Wno-unused-parameter -Wshadow \
           -Wwrite-strings -Wstrict-prototypes -Wold-style-definition \
           -Wredundant-decls -Wnested-externs -Wmissing-include-dirs
-CFLAGS += -std=c11
 CFLAGS += -L/usr/lib -I/usr/lib
 LDFLAGS = -lssl -lcrypto
 
