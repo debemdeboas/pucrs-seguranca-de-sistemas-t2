@@ -7,6 +7,12 @@ It can:
 - verify message signatures given a known public key,
 - encrypt and decrypt messages using AES-128
 
+## Documentation
+
+We host our docs in [GitHub Pages](https://debemdeboas.github.io/pucrs-seguranca-de-sistemas-t2).
+
+To get started, take a look at the [`int main()` documentation](https://debemdeboas.github.io/pucrs-seguranca-de-sistemas-t2/main_8c.html#a3c04138a5bfe5d72780bb7e82a18e627).
+
 ## Examples
 
 If you run `./main samples` it will generate the following files:
