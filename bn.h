@@ -1,6 +1,7 @@
 #ifndef BN_H
 #define BN_H
 
+#include "util.h"
 #include <limits.h>
 #include <openssl/bn.h>
 #include <stdbool.h>
